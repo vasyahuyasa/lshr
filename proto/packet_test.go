@@ -1,0 +1,139 @@
+package proto
+
+import (
+	"bytes"
+	"crypto/md5"
+	"io"
+	"testing"
+)
+
+const (
+	normalNum = 43534
+)
+
+func Test_readuint16(t *testing.T) {
+	type args struct {
+		r io.ByteReader
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    uint16
+		wantErr bool
+	}{
+		{
+			name:    "simple",
+			args:    args{r: bytes.NewBuffer(uint16buf(normalNum))},
+			want:    normalNum,
+			wantErr: false,
+		},
+		{
+			name:    "EOF",
+			args:    args{r: &bytes.Buffer{}},
+			want:    0,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := readuint16(tt.args.r)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("readuint16() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("readuint16() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_readuint64(t *testing.T) {
+	type args struct {
+		r io.ByteReader
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    uint64
+		wantErr bool
+	}{
+		{
+			name:    "normal",
+			args:    args{r: bytes.NewBuffer(uint64buf(normalNum))},
+			want:    normalNum,
+			wantErr: false,
+		},
+		{
+			name:    "EOF",
+			args:    args{r: &bytes.Buffer{}},
+			want:    0,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := readuint64(tt.args.r)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("readuint64() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("readuint64() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAnonunce_UnmarshalBinary(t *testing.T) {
+	normalAnounce := Anonunce{
+		Version:   Version,
+		Filename:  "Test file name",
+		FileHash:  [md5.Size]byte{1, 2, 3, 4, 5, 5, 6},
+		UniqID:    234234,
+		TotalSize: 43234234,
+		NumBlocks: 34534543,
+	}
+	normalAnounceData, err := normalAnounce.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type args struct {
+		data []byte
+	}
+	tests := []struct {
+		name    string
+		fields  Anonunce
+		args    args
+		wantErr bool
+	}{
+		{
+			name:    "noraml",
+			fields:  normalAnounce,
+			args:    args{data: normalAnounceData},
+			wantErr: false,
+		},
+		{
+			name:    "empty data",
+			fields:  normalAnounce,
+			args:    args{data: []byte{}},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &Anonunce{
+				Version:   tt.fields.Version,
+				Filename:  tt.fields.Filename,
+				FileHash:  tt.fields.FileHash,
+				UniqID:    tt.fields.UniqID,
+				TotalSize: tt.fields.TotalSize,
+				NumBlocks: tt.fields.NumBlocks,
+			}
+			if err := a.UnmarshalBinary(tt.args.data); (err != nil) != tt.wantErr {
+				t.Errorf("Anonunce.UnmarshalBinary() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
