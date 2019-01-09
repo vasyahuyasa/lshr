@@ -137,3 +137,61 @@ func TestAnonunce_UnmarshalBinary(t *testing.T) {
 		})
 	}
 }
+
+func TestData_UnmarshalBinary(t *testing.T) {
+	x := []byte{8, 4, 5, 6, 7, 4, 3, 2, 1}
+	data := Data{
+		UniqID:    3243534,
+		BlockNum:  343534,
+		BlockHash: [md5.Size]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5},
+		Size:      uint64(len(x)),
+		Payload:   x,
+	}
+	b, err := data.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	anounce := Anonunce{}
+	ab, err := anounce.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type args struct {
+		data []byte
+	}
+	tests := []struct {
+		name    string
+		fields  Data
+		args    args
+		wantErr bool
+	}{
+		{
+			name:    "normal",
+			fields:  data,
+			args:    args{data: b},
+			wantErr: false,
+		},
+		{
+			name:    "wrong type",
+			fields:  data,
+			args:    args{data: ab},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &Data{
+				UniqID:    tt.fields.UniqID,
+				BlockNum:  tt.fields.BlockNum,
+				BlockHash: tt.fields.BlockHash,
+				Size:      tt.fields.Size,
+				Payload:   tt.fields.Payload,
+			}
+			if err := d.UnmarshalBinary(tt.args.data); (err != nil) != tt.wantErr {
+				t.Errorf("Data.UnmarshalBinary() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

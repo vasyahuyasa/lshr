@@ -1,4 +1,4 @@
-package reciver
+package service
 
 import (
 	"bufio"
@@ -24,7 +24,7 @@ type Reciver struct {
 	wait   map[uint64]*proto.Anonunce
 }
 
-func New(port int) *Reciver {
+func NewReciver(port int) *Reciver {
 	return &Reciver{
 		port: port,
 		wait: map[uint64]*proto.Anonunce{},

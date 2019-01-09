@@ -5,8 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/vasyahuyasa/lshr/reciver"
-	"github.com/vasyahuyasa/lshr/sender"
+	"github.com/vasyahuyasa/lshr/service"
 )
 
 const port = 23543
@@ -38,13 +37,16 @@ func send(filename string) error {
 		return err
 	}
 
-	s := sender.New(port, filename, f, uint64(info.Size()), 1)
+	s, err := service.NewSender(port, filename, f, uint64(info.Size()), 1)
+	if err != nil {
+		log.Fatalf("Can not start sender: %v\n", err)
+	}
 	log.Printf("Start anounce %s to %d port\n", filename, port)
 	return s.Anounce()
 }
 
 func recive() error {
 	log.Printf("Wait incoming files on port %d\n", port)
-	r := reciver.New(port)
+	r := service.NewReciver(port)
 	return r.Recive()
 }

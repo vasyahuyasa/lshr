@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"log"
 )
 
 // Proto is current protocol version
@@ -24,6 +25,8 @@ var (
 	ErrFilenameLengthMistmatch = errors.New("filename length mistmatch")
 
 	ErrFileHashLengthMistmatch = errors.New("file hash length mistmatch")
+
+	ErrPayloadSizeMistmatch = errors.New("payload size mistmatch")
 )
 
 // Anonunce is structure for represent of sending file
@@ -59,9 +62,109 @@ type Data struct {
 	BlockHash [md5.Size]byte
 
 	// Size is size of folowwing payload in bytes
-	Size uint32
+	Size uint64
 
 	Payload []byte
+}
+
+func (d *Data) MarshalBinary() ([]byte, error) {
+	buf := bytes.Buffer{}
+
+	// packet type
+	err := buf.WriteByte(PacketData)
+	if err != nil {
+		return nil, err
+	}
+
+	// UniqID
+	_, err = buf.Write(uint64buf(d.UniqID))
+	if err != nil {
+		return nil, err
+	}
+
+	// BlockNum
+	_, err = buf.Write(uint64buf(d.BlockNum))
+	if err != nil {
+		return nil, err
+	}
+
+	// BlockHash
+	_, err = buf.Write(d.BlockHash[:])
+	if err != nil {
+		return nil, err
+	}
+
+	// Size
+	_, err = buf.Write(uint64buf(d.Size))
+	if err != nil {
+		return nil, err
+	}
+
+	// payload
+	_, err = buf.Write(d.Payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func (d *Data) UnmarshalBinary(data []byte) error {
+	buf := bytes.NewBuffer(data)
+	var err error
+
+	// check packet type
+	packet, err := buf.ReadByte()
+	if err != nil {
+		return err
+	}
+	if packet != PacketData {
+		return ErrPacketTypeMistmatch
+	}
+
+	//UniqID
+	d.UniqID, err = readuint64(buf)
+	if err != nil {
+		return err
+	}
+
+	//BlockNum
+	d.BlockNum, err = readuint64(buf)
+	if err != nil {
+		return err
+	}
+
+	//BlockHash
+	blockahsh := make([]byte, md5.Size)
+	n, err := buf.Read(blockahsh)
+	if err != nil {
+		return err
+	}
+	if n != md5.Size {
+		return ErrFileHashLengthMistmatch
+	}
+	copy(d.BlockHash[:], blockahsh)
+
+	//Size
+	d.Size, err = readuint64(buf)
+	if err != nil {
+		return err
+	}
+
+	//Payload
+	d.Payload = make([]byte, d.Size)
+	n, err = buf.Read(d.Payload)
+	if err != nil {
+		return err
+	}
+	if uint64(n) != d.Size {
+
+		log.Printf("read from data: %d d.Size: %d len(data): %d\n", n, d.Size, len(d.Payload))
+
+		return ErrPayloadSizeMistmatch
+	}
+
+	return nil
 }
 
 func (a *Anonunce) MarshalBinary() ([]byte, error) {

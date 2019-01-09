@@ -1,4 +1,4 @@
-package sender
+package service
 
 import (
 	"crypto/md5"
@@ -27,9 +27,23 @@ type Sender struct {
 	blocks   uint64
 	r        io.Reader
 	state    state
+	conn     *net.UDPConn
 }
 
-func New(port int, filename string, r io.Reader, size uint64, blocks uint64) *Sender {
+func (s *Sender) changeState(st state) {
+	s.state = st
+}
+
+func (s *Sender) broadcastState(st state) {
+
+}
+
+func NewSender(port int, filename string, r io.Reader, size uint64, blocks uint64) (*Sender, error) {
+	conn, err := makeBroadcastConn()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Sender{
 		port:     port,
 		filename: filename,
@@ -37,7 +51,17 @@ func New(port int, filename string, r io.Reader, size uint64, blocks uint64) *Se
 		blocks:   blocks,
 		r:        r,
 		state:    statePrepare,
+		conn:     conn,
+	}, nil
+}
+
+func makeBroadcastConn() (*net.UDPConn, error) {
+	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", net.IPv4bcast, s.port))
+	if err != nil {
+		return err
 	}
+
+	return net.DialUDP("udp", nil, addr)
 }
 
 func (s *Sender) Anounce() error {
@@ -53,16 +77,6 @@ func (s *Sender) Anounce() error {
 	}
 
 	data, err := anounce.MarshalBinary()
-	if err != nil {
-		return err
-	}
-
-	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", net.IPv4bcast, s.port))
-	if err != nil {
-		return err
-	}
-
-	conn, err := net.DialUDP("udp", nil, addr)
 	if err != nil {
 		return err
 	}
